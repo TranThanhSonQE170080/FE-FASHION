@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
-import  client  from '@/lib/api';
 import { Loader2 } from 'lucide-react';
+// Import authApi từ file auth.ts của bạn
+import { authApi } from '@/lib/auth'; 
 
 export default function AuthCallback() {
   useEffect(() => {
     const handleAuth = async () => {
       try {
-        await client.auth.login();
+        // Thay 'client'.auth.login() thành authApi.login()
+        await authApi.login(); 
         window.location.href = '/';
       } catch (error) {
         console.error('Auth error:', error);

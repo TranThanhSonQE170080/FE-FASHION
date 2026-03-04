@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, ShoppingCart, Menu, X, User } from 'lucide-react';
+import { Search, ShoppingCart, Menu, X, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCart } from '@/contexts/CartContext'; 
+import { useAuth } from '@/contexts/AuthContext'; 
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -11,7 +13,10 @@ interface HeaderProps {
 export default function Header({ onSearch }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [cartCount] = useState(0);
+  
+  const { cartCount } = useCart(); 
+  
+  const { user, isAdmin, logout } = useAuth(); 
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,9 +56,13 @@ export default function Header({ onSearch }: HeaderProps) {
             <Link to="/" className="text-gray-800 hover:text-[#FF6B6B] font-medium transition-colors duration-200">
               Sale
             </Link>
-            <Link to="/admin" className="text-gray-800 hover:text-[#FF6B6B] font-medium transition-colors duration-200">
-              Admin
-            </Link>
+            
+            {/* ✅ Chỉ hiển thị link Admin khi người dùng đang đăng nhập VÀ có quyền admin */}
+            {isAdmin && (
+              <Link to="/admin" className="text-[#FF6B6B] hover:text-red-600 font-bold transition-colors duration-200 flex items-center gap-1">
+                Admin Panel
+              </Link>
+            )}
           </nav>
 
           {/* Search Bar - Desktop */}
@@ -71,21 +80,52 @@ export default function Header({ onSearch }: HeaderProps) {
           </form>
 
           {/* Right Actions */}
-          <div className="flex items-center space-x-4">
-            {/* User Icon - Desktop */}
-            <Button variant="ghost" size="icon" className="hidden lg:flex hover:bg-gray-100 rounded-full">
-              <User className="h-5 w-5 text-gray-700" />
-            </Button>
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            
+            {/* ✅ KHU VỰC ĐĂNG NHẬP / THÔNG TIN USER */}
+            {user ? (
+              // Nếu đã đăng nhập: Hiện tên user và nút Đăng xuất
+              <div className="hidden lg:flex items-center gap-3 border-r pr-4 border-gray-200">
+                <span className="text-sm font-medium text-gray-600">
+                  Hi, {user.email.split('@')[0]}
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={logout} 
+                  className="text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full px-3"
+                  title="Đăng xuất"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              // Nếu chưa đăng nhập: Hiện nút Đăng nhập & Đăng ký
+              <div className="hidden lg:flex items-center gap-2 border-r pr-4 border-gray-200">
+                <Link to="/login">
+                  <Button variant="ghost" className="rounded-full font-medium hover:text-[#FF6B6B]">
+                    Đăng nhập
+                  </Button>
+                </Link>
+                <Link to="/register">
+                  <Button className="rounded-full bg-black text-white hover:bg-[#FF6B6B]">
+                    Đăng ký
+                  </Button>
+                </Link>
+              </div>
+            )}
 
             {/* Cart */}
-            <Button variant="ghost" size="icon" className="relative hover:bg-gray-100 rounded-full">
-              <ShoppingCart className="h-5 w-5 text-gray-700" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#FF6B6B] text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
-            </Button>
+            <Link to="/cart">
+              <Button variant="ghost" size="icon" className="relative hover:bg-gray-100 rounded-full ml-2">
+                <ShoppingCart className="h-5 w-5 text-gray-700" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[#FF6B6B] text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
 
             {/* Mobile Menu Toggle */}
             <Button
@@ -130,50 +170,28 @@ export default function Header({ onSearch }: HeaderProps) {
 
             {/* Mobile Navigation */}
             <nav className="flex flex-col space-y-2">
-              <Link
-                to="/"
-                className="px-4 py-2 text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Home
-              </Link>
-              <Link
-                to="/"
-                className="px-4 py-2 text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                New Arrivals
-              </Link>
-              <Link
-                to="/"
-                className="px-4 py-2 text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Sale
-              </Link>
-              <Link
-                to="/admin"
-                className="px-4 py-2 text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Admin
-              </Link>
-            </nav>
+              <Link to="/" className="px-4 py-2 text-gray-800 hover:bg-gray-100 rounded-lg" onClick={() => setIsMobileMenuOpen(false)}>Home</Link>
+              
+              {/* ✅ Menu Mobile: Chỉ hiện Admin khi là admin */}
+              {isAdmin && (
+                <Link to="/admin" className="px-4 py-2 text-[#FF6B6B] font-bold hover:bg-red-50 rounded-lg" onClick={() => setIsMobileMenuOpen(false)}>Admin Panel</Link>
+              )}
 
-            {/* Mobile Categories */}
-            <div className="border-t border-gray-200 pt-4">
-              <p className="text-sm font-semibold text-gray-700 mb-2">Categories</p>
-              <div className="grid grid-cols-2 gap-2">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors text-left"
-                  >
-                    {category}
-                  </button>
-                ))}
+              {/* ✅ Menu Mobile: Nút Đăng nhập/Đăng xuất */}
+              <div className="border-t pt-2 mt-2">
+                {user ? (
+                  <>
+                    <p className="px-4 py-2 text-sm text-gray-500">Đang đăng nhập: {user.email}</p>
+                    <button onClick={() => { logout(); setIsMobileMenuOpen(false); }} className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg">Đăng xuất</button>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/login" className="block px-4 py-2 text-gray-800 hover:bg-gray-100 rounded-lg" onClick={() => setIsMobileMenuOpen(false)}>Đăng nhập</Link>
+                    <Link to="/register" className="block px-4 py-2 text-gray-800 hover:bg-gray-100 rounded-lg" onClick={() => setIsMobileMenuOpen(false)}>Đăng ký tài khoản</Link>
+                  </>
+                )}
               </div>
-            </div>
+            </nav>
           </div>
         </div>
       )}

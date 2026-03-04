@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { config } from "@/lib/config"; // ✅ Thêm dòng này
 
 interface Product {
   id: number;
@@ -25,7 +26,8 @@ export default function ProductList() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://localhost:8000/api/v1/entities/products?limit=100");
+      // ✅ Dùng config.API_BASE_URL
+      const res = await fetch(`${config.API_BASE_URL}/api/v1/entities/products?limit=100`);
       
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
@@ -48,7 +50,8 @@ export default function ProductList() {
     }
 
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/entities/products/${id}`, {
+      // ✅ Dùng config.API_BASE_URL
+      const res = await fetch(`${config.API_BASE_URL}/api/v1/entities/products/${id}`, {
         method: "DELETE",
       });
 
@@ -57,7 +60,6 @@ export default function ProductList() {
       }
 
       alert("Product deleted successfully");
-      // Refresh danh sách
       fetchProducts();
     } catch (err) {
       console.error("Error deleting product:", err);
@@ -128,7 +130,6 @@ export default function ProductList() {
                     marginBottom: "15px"
                   }}
                   onError={(e) => {
-                    // Fallback nếu ảnh lỗi
                     e.currentTarget.src = "https://via.placeholder.com/300x200?text=No+Image";
                   }}
                 />

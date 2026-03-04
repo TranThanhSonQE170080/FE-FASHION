@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { config } from "@/lib/config"; // ✅ Thêm dòng này
 
 interface CreateProductProps {
-  onProductCreated?: () => void; // ✅ Thêm callback prop
+  onProductCreated?: () => void;
 }
 
 export default function CreateProduct({ onProductCreated }: CreateProductProps) {
@@ -19,7 +20,8 @@ export default function CreateProduct({ onProductCreated }: CreateProductProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const res = await fetch("http://localhost:8000/api/v1/entities/products", {
+    // ✅ Dùng config.API_BASE_URL thay cho localhost
+    const res = await fetch(`${config.API_BASE_URL}/api/v1/entities/products`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -48,7 +50,6 @@ export default function CreateProduct({ onProductCreated }: CreateProductProps) 
       stock: 0
     });
 
-    // ✅ Gọi callback để parent refresh data
     if (onProductCreated) {
       onProductCreated();
     }

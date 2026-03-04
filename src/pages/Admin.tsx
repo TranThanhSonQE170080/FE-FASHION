@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import client from '@/lib/api';
+
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Loader2, Plus, Pencil, Trash2, RotateCw } from 'lucide-react';
+
+// ✅ Gắn cứng Link API gốc để không bao giờ bị kẹt mạng nữa
+const API_URL = 'http://127.0.0.1:8000';
 
 interface Product {
   id: number;
@@ -63,7 +66,7 @@ export default function Admin() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProductId, setDeletingProductId] = useState<number | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false); // ✅ Thêm state loading submit
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<ProductForm>({
     name: '',
     description: '',
@@ -79,20 +82,20 @@ export default function Admin() {
     fetchProducts();
   }, []);
 
-  // ✅ Fetch products
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await client.entities.products.query({
-        query: {},
-        sort: '-created_at',
-        limit: 100,
-      });
-      setProducts(response.data.items);
-    } catch (error: unknown) {
+      // Gọi thẳng đường link gốc
+      const res = await fetch(`${API_URL}/api/v1/entities/products?limit=100`);
+      
+      if (!res.ok) throw new Error('Không thể tải danh sách sản phẩm');
+      
+      const data = await res.json();
+      setProducts(data.items || []);
+    } catch (error: any) {
       toast({
         title: 'Lỗi',
-        description: 'Không thể tải danh sách sản phẩm',
+        description: error.message || 'Lỗi kết nối đến server',
         variant: 'destructive',
       });
     } finally {
@@ -107,10 +110,10 @@ export default function Admin() {
         name: product.name,
         description: product.description,
         price: product.price.toString(),
-        image: product.image,
-        category: product.category,
-        size: product.size,
-        color: product.color,
+        image: product.image || '',
+        category: product.category || 'men',
+        size: product.size || 'M',
+        color: product.color || '',
         stock: product.stock.toString(),
       });
     } else {
@@ -129,7 +132,6 @@ export default function Admin() {
     setIsDialogOpen(true);
   };
 
-  // ✅ Sửa: Submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -142,89 +144,103 @@ export default function Admin() {
       return;
     }
 
-    setIsSubmitting(true); // ✅ Set loading
+    setIsSubmitting(true);
 
     try {
+      // Tự động làm sạch số tiền (ví dụ nhập 161.850 sẽ chuyển thành 161850)
+      const cleanPrice = formData.price.toString().replace(/[.,]/g, '');
+      const parsedPrice = parseFloat(cleanPrice);
+      
+      const cleanStock = formData.stock.toString().replace(/[.,]/g, '');
+      const parsedStock = parseInt(cleanStock) || 0;
+
+      if (isNaN(parsedPrice)) {
+        throw new Error("Giá sản phẩm không hợp lệ (vui lòng chỉ nhập số).");
+      }
+
       const productData = {
         name: formData.name,
         description: formData.description,
-        price: parseFloat(formData.price),
-        image:
-          formData.image ||
-          'https://mgx-backend-cdn.metadl.com/generate/images/656699/2026-01-25/4b7dd3e9-1ac1-4cdb-b52b-d076dcd0e93a.png',
+        price: parsedPrice, 
+        image: formData.image || 'https://mgx-backend-cdn.metadl.com/generate/images/656699/2026-01-25/4b7dd3e9-1ac1-4cdb-b52b-d076dcd0e93a.png',
         category: formData.category,
         size: formData.size,
         color: formData.color,
-        stock: parseInt(formData.stock),
+        stock: parsedStock,
       };
 
-      if (editingProduct) {
-        await client.entities.products.update({
-          id: editingProduct.id.toString(),
-          data: productData,
-        });
-        toast({
-          title: 'Thành công',
-          description: 'Cập nhật sản phẩm thành công',
-        });
-      } else {
-        await client.entities.products.create({
-          data: productData,
-        });
-        toast({
-          title: 'Thành công',
-          description: 'Tạo sản phẩm mới thành công',
-        });
+      const url = editingProduct
+        ? `${API_URL}/api/v1/entities/products/${editingProduct.id}`
+        : `${API_URL}/api/v1/entities/products`;
+
+      const res = await fetch(url, {
+        method: editingProduct ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        let errorMessage = editingProduct ? 'Cập nhật thất bại' : 'Tạo mới thất bại';
+        
+        if (err.detail) {
+          if (Array.isArray(err.detail)) {
+            errorMessage = `Sai dữ liệu tại: ${err.detail[0].loc.slice(-1)} (${err.detail[0].msg})`;
+          } else if (typeof err.detail === 'string') {
+            errorMessage = err.detail;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
+      toast({
+        title: 'Thành công',
+        description: editingProduct ? 'Cập nhật sản phẩm thành công' : 'Tạo sản phẩm mới thành công',
+      });
+
       setIsDialogOpen(false);
-      await fetchProducts(); // ✅ Refresh danh sách sau khi submit thành công
-    } catch (error: unknown) {
-      const detail =
-        (error as { data?: { detail?: string }; response?: { data?: { detail?: string } }; message?: string })?.data
-          ?.detail ||
-        (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
-        (error as Error).message;
+      await fetchProducts(); 
+    } catch (error: any) {
       toast({
         title: 'Lỗi',
-        description: detail || 'Không thể lưu sản phẩm',
+        description: error.message || 'Không thể lưu sản phẩm',
         variant: 'destructive',
       });
     } finally {
-      setIsSubmitting(false); // ✅ Reset loading
+      setIsSubmitting(false); // Chắc chắn sẽ tắt vòng xoay
     }
   };
 
-  // ✅ Sửa: Delete product
   const handleDelete = async () => {
     if (!deletingProductId) return;
 
-    setIsSubmitting(true); // ✅ Set loading
+    setIsSubmitting(true);
 
     try {
-      await client.entities.products.delete({
-        id: deletingProductId.toString(),
+      const res = await fetch(`${API_URL}/api/v1/entities/products/${deletingProductId}`, {
+        method: 'DELETE',
       });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Xóa thất bại');
+      }
+
       toast({
         title: 'Thành công',
         description: 'Xóa sản phẩm thành công',
       });
       setIsDeleteDialogOpen(false);
       setDeletingProductId(null);
-      await fetchProducts(); // ✅ Refresh danh sách sau khi xóa
-    } catch (error: unknown) {
-      const detail =
-        (error as { data?: { detail?: string }; response?: { data?: { detail?: string } }; message?: string })?.data
-          ?.detail ||
-        (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
-        (error as Error).message;
+      await fetchProducts(); 
+    } catch (error: any) {
       toast({
         title: 'Lỗi',
-        description: detail || 'Không thể xóa sản phẩm',
+        description: error.message || 'Không thể xóa sản phẩm',
         variant: 'destructive',
       });
     } finally {
-      setIsSubmitting(false); // ✅ Reset loading
+      setIsSubmitting(false); 
     }
   };
 
@@ -243,7 +259,6 @@ export default function Admin() {
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-4xl font-bold">Quản Lý Sản Phẩm</h1>
           <div className="flex gap-3">
-            {/* ✅ Thêm button Refresh */}
             <Button
               onClick={fetchProducts}
               variant="outline"
@@ -285,9 +300,12 @@ export default function Admin() {
                   <TableRow key={product.id}>
                     <TableCell>
                       <img
-                        src={product.image}
+                        src={product.image || 'https://via.placeholder.com/150'}
                         alt={product.name}
-                        className="w-16 h-16 object-cover rounded"
+                        className="w-16 h-16 object-cover rounded border"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150';
+                        }}
                       />
                     </TableCell>
                     <TableCell className="font-medium">{product.name}</TableCell>
@@ -367,9 +385,10 @@ export default function Admin() {
                 <Label htmlFor="price">Giá (VNĐ) *</Label>
                 <Input
                   id="price"
-                  type="number"
+                  type="text"
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  placeholder="VD: 161.850"
                   required
                   disabled={isSubmitting}
                 />
@@ -378,9 +397,10 @@ export default function Admin() {
                 <Label htmlFor="stock">Tồn kho</Label>
                 <Input
                   id="stock"
-                  type="number"
+                  type="text"
                   value={formData.stock}
                   onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                  placeholder="VD: 88"
                   disabled={isSubmitting}
                 />
               </div>
@@ -391,7 +411,7 @@ export default function Admin() {
                 id="image"
                 value={formData.image}
                 onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                placeholder="/images/photo1769349585.jpg"
+                placeholder="https://link-hinh-anh.jpg"
                 disabled={isSubmitting}
               />
             </div>
@@ -410,6 +430,12 @@ export default function Admin() {
                     <SelectItem value="men">Nam</SelectItem>
                     <SelectItem value="women">Nữ</SelectItem>
                     <SelectItem value="accessories">Phụ kiện</SelectItem>
+                    <SelectItem value="T-Shirts">T-Shirts (Áo thun)</SelectItem>
+                    <SelectItem value="Jeans">Jeans (Quần bò)</SelectItem>
+                    <SelectItem value="Jackets">Jackets (Áo khoác)</SelectItem>
+                    <SelectItem value="Dresses">Dresses (Váy)</SelectItem>
+                    <SelectItem value="Hoodies">Hoodies (Áo nỉ có mũ)</SelectItem>
+                    <SelectItem value="Sweaters">Sweaters (Áo len)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -462,7 +488,6 @@ export default function Admin() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
