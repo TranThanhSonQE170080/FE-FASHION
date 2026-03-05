@@ -33,7 +33,7 @@ import {
 import { Loader2, Plus, Pencil, Trash2, RotateCw } from 'lucide-react';
 
 // ✅ Gắn cứng Link API gốc để không bao giờ bị kẹt mạng nữa
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = 'https://prn232-fashion.onrender.com';
 
 interface Product {
   id: number;

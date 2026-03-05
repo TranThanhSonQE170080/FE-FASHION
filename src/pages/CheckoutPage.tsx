@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext'; // ✅ 1. Import useAuth
 
-const API_URL = 'http://127.0.0.1:8000'; // ✅ 2. Thêm URL của Backend
+const API_URL = 'https://prn232-fashion.onrender.com/'; // ✅ 2. Thêm URL của Backend
 
 export default function CheckoutPage() {
   const { cart, cartTotal, clearCart } = useCart();

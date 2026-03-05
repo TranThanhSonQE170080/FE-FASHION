@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/contexts/CartContext';
 import { Loader2, ArrowLeft, ShoppingCart, Truck, Shield, RefreshCw } from 'lucide-react';
 
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = 'https://prn232-fashion.onrender.com';
 
 interface Product {
   id: number;

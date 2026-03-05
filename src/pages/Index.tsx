@@ -9,7 +9,7 @@ import ProductDetailModal from '@/components/ProductDetailModal';
 import { ChevronRight, TrendingUp, Sparkles } from 'lucide-react';
 
 // ✅ Gắn cứng API để trị triệt để lỗi "Config loading" (Không dùng config.ts nữa)
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = 'https://prn232-fashion.onrender.com';
 
 /* =======================
    1️⃣ KIỂU DỮ LIỆU & CHUẨN HÓA
